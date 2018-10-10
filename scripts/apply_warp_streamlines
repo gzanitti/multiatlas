@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+"""Command line interface to apply a warp transformation over a
+   streamlines file"""
+import argparse
+
+from multiatlas.cli import apply_warp_streamlines as ap
+
+
+if __name__ == "__main__":
+    # Parser
+    parser = argparse.ArgumentParser(description=("Applies a non-linear "
+                                                  "transformation to a set of "
+                                                  "streamlines"))
+
+    parser.add_argument('-stream', dest='streamlines', required=True, type=str,
+                        help='streamlines file')
+
+    parser.add_argument('-from', dest='img_src', required=True,
+                        type=str, help='Volume in the source space')
+
+    parser.add_argument('-inv-warp', dest='img_warp', required=True,
+                        type=str, help=('Transformation from DESTINATION to '
+                                        'SOURCE space, please notice that we '
+                                        'will not inverse this transform'))
+
+    parser.add_argument('-to', dest='img_dst', required=True, type=str,
+                        help='Volume in destination space')
+
+    parser.add_argument('-out', dest='outfile', required=True, type=str,
+                        help='Filename for the output file')
+
+    args = parser.parse_args()
+
+    ap.apply_warp_streamlines(args.streamlines, args.img_src, args.img_warp,
+                              args.img_dst, args.outfile)

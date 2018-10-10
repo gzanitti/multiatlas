@@ -1,0 +1,26 @@
+#!/usr/bin/env python
+"""Command line interface to convert tracts from one format to another,
+   specially usefull for vtk <-> trk transformation"""
+
+import argparse
+
+from multiatlas.cli import vtk_to_trk_converter as v2t
+
+if __name__ == "__main__":
+    # Parser
+    parser = argparse.ArgumentParser(description=("Trasforms between tract"
+                                                  "file formats"))
+
+    parser.add_argument('-in', dest='tract_in', required=True, type=str,
+                        help='file to transform')
+
+    parser.add_argument('-out', dest='tract_out', required=True,
+                        type=str, help='output file')
+
+    parser.add_argument('-ref', dest='reference', type=str,
+                        help='reference volume (for trk files)')
+
+
+    args = parser.parse_args()
+
+    v2t.vtk_to_trk_converter(args.tract_in, args.tract_out, args.reference)
