@@ -33,17 +33,25 @@ def segmentation(atlases_files, tract_files, dwi_file,
            bvecs file
        outfile: string
            name of the outfile"""
-    # Map subjects to indices
-    subjects = [os.path.basename(atlas_file).split('_')[0]
-                for atlas_file in atlases_files]
+    
+    if atlases_files:
+        subjects = [os.path.basename(atlas_file).split('_')[0]
+                    for atlas_file in atlases_files]
+
+        # Load atlases
+        atlases = [nibabel.load(atlas_file).get_data()
+                   for atlas_file in atlases_files]
+
+        atlases = np.array(atlases)
+        max_atlas_label = atlases.max()
+    else:
+        atlases = []
+        subjects = [os.path.basename(atlas_file).split('.')[0]
+                    for atlas_file in tract_files]
+        subjects = list(set(subjects))
+        max_atlas_label = 0
+
     subject2id = {s:i for i, s in enumerate(subjects)}
-
-    # Load atlases
-    atlases = [nibabel.load(atlas_file).get_data()
-               for atlas_file in atlases_files]
-    atlases = np.array(atlases)
-    max_atlas_label = atlases.max()
-
     # DWI data
     dwi_image = nibabel.load(dwi_file)
     dwi_affine = dwi_image.affine
@@ -69,9 +77,9 @@ def segmentation(atlases_files, tract_files, dwi_file,
         tracts[(sid, lab)] = streamlines
 
         # if you vote for a tract, then you don't vote for a cortical label
-        for s in streamlines:
-            pos_in_vox = np.round(s).astype(int)
-            atlases[sid][tuple(np.transpose(pos_in_vox))] = 0
+        #for s in streamlines:
+        #    pos_in_vox = np.round(s).astype(int)
+        #    atlases[sid][tuple(np.transpose(pos_in_vox))] = 0
     
     segmentation = multi_label_segmentation(atlases, tracts, test_dwi,
                                             bvecs, bvals, dwi_affine)

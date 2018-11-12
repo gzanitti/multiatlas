@@ -22,8 +22,7 @@ def compute_odfs(dmri_data, bvals, bvecs, mask, sphere):
     gtab = gradient_table(bvals, bvecs, b0_threshold=bvals.min())
     
     #print("PLEASE REMEMBER TO DEACTIVATE ME AFTER FINISING TESTING")
-    response, ratio = auto_response(gtab, dmri_data,#)
-                                    roi_center=[4,5,5], roi_radius=1)
+    response, ratio = auto_response(gtab, dmri_data)
 
     csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=6)
 
@@ -148,12 +147,13 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
        #TODO
        '''
     # Compute the number of subjects
-    nsubjects = atlases.shape[0]
+    nsubjects = 9#atlases.shape[0]
 
     # Take the labels
     tract_labels = np.unique([v for _, v in train_tracts.keys()])
-    volume_labels = np.unique(atlases)
-    volume_labels = volume_labels[volume_labels > 0]
+    #volume_labels = np.unique(atlases)
+    #volume_labels = volume_labels[volume_labels > 0]
+    volume_labels = []
 
     # We want to assign the label with the highest sum of weighted votes,
     # lets compute a mask of the voxels which we are going to take into
@@ -163,7 +163,7 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
     # Let's only use the voxels in the Grey-matter where at least 20% of the
     # subjects have a vote
     #print("Compute mask")
-    volume_mask = (atlases > 0).any(0)
+    #volume_mask = (atlases > 0).any(0)
 
     # And lets use only the voxels in the white-matter where there are more
     # than 10 streamlines passing throught
@@ -174,10 +174,10 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
             tup_pos = tuple(np.round(np.transpose(tract)).astype(int))
             tract_mask[tup_pos] = True
 
-    mask = volume_mask | tract_mask
+    mask = tract_mask
 
     # Filter atlases, retain only the voxels in the mask
-    atlases = atlases[:, mask]
+    #atlases = atlases[:, mask]
 
     nzrs = mask.nonzero()
     nzrs_tuple = [tuple(n) for n in np.transpose(nzrs)]
@@ -206,7 +206,7 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
 
     # Compute the weight for each tract
     for l in tract_labels:
-        #print("Computing weights for label {}".format(l))
+        print("Computing weights for label {}".format(l))
         weights = diffusion_weights_tract(test_odfs, nsubjects, train_tracts,
                                           l, nzrs_tuple, sphere)
         update_brackground_and_weight_variables(weights, l)

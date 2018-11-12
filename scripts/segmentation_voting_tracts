@@ -3,7 +3,7 @@
    streamlines file"""
 import argparse
 
-from multiatlas.cli import segmentation_diffusion_inner as sd
+from multiatlas.cli import segmentation_voting_tracts as svt
 
 
 if __name__ == "__main__":
@@ -12,25 +12,15 @@ if __name__ == "__main__":
                                                   " based on the voting of"
                                                   " many experts"))
 
-    parser.add_argument('-atlases', dest='atlases', type=str,
-                        nargs='+', help='atlases of the train subjects')
-
     parser.add_argument('-tracts', dest='tracts', required=True, type=str,
                         nargs='+', help='tracts of the train subjects')
 
     parser.add_argument('-dwi', dest='dwi', required=True, type=str,
                         help='Diffusion image of test subject')
 
-    parser.add_argument('-bvals', dest='bvals', required=True, type=str,
-                        help='bvals file')
-
-    parser.add_argument('-bvecs', dest='bvecs', required=True, type=str,
-                        help='bvecs file')
-
     parser.add_argument('-out', dest='outfile', required=True, type=str,
                         help="outfile")
 
     args = parser.parse_args()
 
-    sd.segmentation(args.atlases, args.tracts, args.dwi,
-                    args.bvals, args.bvecs, args.outfile)
+    svt.segmentation(args.tracts, args.dwi, args.outfile)
