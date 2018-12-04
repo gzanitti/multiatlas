@@ -20,9 +20,9 @@ from .acg_distribution import lambda_estimator, density
 def compute_odfs(dmri_data, bvals, bvecs, mask, sphere):
     """Returns peaks of the diffusion data on nzr_positions"""
     gtab = gradient_table(bvals, bvecs, b0_threshold=bvals.min())
-    
+
     #print("PLEASE REMEMBER TO DEACTIVATE ME AFTER FINISING TESTING")
-    response, ratio = auto_response(gtab, dmri_data)
+    response, _ = auto_response(gtab, dmri_data)
 
     csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=6)
 
@@ -84,7 +84,7 @@ def diffusion_weights_tract(odfs, total_subjects, tract_dict,
 
     weights_per_voxel = np.zeros((total_subjects, len(nzrs)))
 
-    vox2idx = {v:i for i,v in enumerate(nzrs)}
+    vox2idx = {v:i for i, v in enumerate(nzrs)}
 
     for subject in range(total_subjects):
         #print("Diff for subject {}".format(subject))
@@ -147,7 +147,8 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
        #TODO
        '''
     # Compute the number of subjects
-    nsubjects = 9#atlases.shape[0]
+    max_subject_key = max([s for s, _ in train_tracts.keys()]) + 1
+    nsubjects = max(len(atlases), max_subject_key)
 
     # Take the labels
     tract_labels = np.unique([v for _, v in train_tracts.keys()])
@@ -193,7 +194,7 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
     max_weights = np.zeros(len(nzrs[0]))
     output_segmentation = np.zeros_like(max_weights)
 
-    def update_brackground_and_weight_variables(weights, l):
+    def update_background_and_weight_variables(weights, l):
         background[weights.nonzero()] = 0
         weights = weights.sum(0)
 
@@ -209,7 +210,7 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
         print("Computing weights for label {}".format(l))
         weights = diffusion_weights_tract(test_odfs, nsubjects, train_tracts,
                                           l, nzrs_tuple, sphere)
-        update_brackground_and_weight_variables(weights, l)
+        update_background_and_weight_variables(weights, l)
 
     # Compute the weight for each grey-matter label assuming isotropic diff
     # The value in a uniform is 1/#v, if we want <u,u> = 1, then we
@@ -224,12 +225,12 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
     for l in volume_labels:
         #print("Computing weights for label {}".format(l))
         weights = (atlases == l) * odfs_uniform_inner_product
-        update_brackground_and_weight_variables(weights, l)
+        update_background_and_weight_variables(weights, l)
 
     # Compute the background weights, assuming isotropic diffusion
     background_weights = background*odfs_uniform_inner_product
 
-    update_brackground_and_weight_variables(background_weights, 0)
+    update_background_and_weight_variables(background_weights, 0)
 
     output = np.zeros_like(mask, dtype=int)
     output[nzrs] = output_segmentation

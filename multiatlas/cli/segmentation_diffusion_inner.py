@@ -80,7 +80,7 @@ def segmentation(atlases_files, tract_files, dwi_file,
         #for s in streamlines:
         #    pos_in_vox = np.round(s).astype(int)
         #    atlases[sid][tuple(np.transpose(pos_in_vox))] = 0
-    
+   
     segmentation = multi_label_segmentation(atlases, tracts, test_dwi,
                                             bvecs, bvals, dwi_affine)
 
