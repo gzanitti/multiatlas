@@ -5,6 +5,7 @@ from warnings import warn
 
 import numpy as np
 import nibabel
+import time
 
 from dipy.core.gradients import gradient_table
 from dipy.reconst.csdeconv import auto_response
@@ -129,7 +130,8 @@ def diffusion_weights_tract(odfs, total_subjects, tract_dict,
 
 
 def multi_label_segmentation(atlases, train_tracts, test_dwi,
-                             bvecs, bvals, dwi_affine, sphere='repulsion100'):
+                             bvecs, bvals, dwi_affine, sphere='repulsion100',
+                             outfile=None):
     '''Label fusion that takes into account diffusion information
 
        Parameters
@@ -152,9 +154,8 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
 
     # Take the labels
     tract_labels = np.unique([v for _, v in train_tracts.keys()])
-    #volume_labels = np.unique(atlases)
-    #volume_labels = volume_labels[volume_labels > 0]
-    volume_labels = []
+    volume_labels = np.unique(atlases)
+    volume_labels = volume_labels[volume_labels > 0]
 
     # We want to assign the label with the highest sum of weighted votes,
     # lets compute a mask of the voxels which we are going to take into
@@ -164,7 +165,7 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
     # Let's only use the voxels in the Grey-matter where at least 20% of the
     # subjects have a vote
     #print("Compute mask")
-    #volume_mask = (atlases > 0).any(0)
+    volume_mask = (atlases > 0).any(0)
 
     # And lets use only the voxels in the white-matter where there are more
     # than 10 streamlines passing throught
@@ -175,10 +176,10 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
             tup_pos = tuple(np.round(np.transpose(tract)).astype(int))
             tract_mask[tup_pos] = True
 
-    mask = tract_mask
+    mask = (volume_mask + tract_mask).astype(bool)
 
     # Filter atlases, retain only the voxels in the mask
-    #atlases = atlases[:, mask]
+    atlases = atlases[:, mask]
 
     nzrs = mask.nonzero()
     nzrs_tuple = [tuple(n) for n in np.transpose(nzrs)]
@@ -207,10 +208,12 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
 
     # Compute the weight for each tract
     for l in tract_labels:
+        init = time.time()
         print("Computing weights for label {}".format(l))
         weights = diffusion_weights_tract(test_odfs, nsubjects, train_tracts,
                                           l, nzrs_tuple, sphere)
         update_background_and_weight_variables(weights, l)
+        print(time.time() - init)
 
     # Compute the weight for each grey-matter label assuming isotropic diff
     # The value in a uniform is 1/#v, if we want <u,u> = 1, then we
