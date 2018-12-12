@@ -17,7 +17,6 @@ from logpar.utils import cifti_utils
 
 from .acg_distribution import lambda_estimator, density
 
-
 def compute_odfs(dmri_data, bvals, bvecs, mask, sphere):
     """Returns peaks of the diffusion data on nzr_positions"""
     gtab = gradient_table(bvals, bvecs, b0_threshold=bvals.min())
@@ -45,7 +44,6 @@ def compute_odfs(dmri_data, bvals, bvecs, mask, sphere):
 
     return odfs
 
-
 def streamline_directions_per_voxel(streamlines, nzrs):
     '''Given a set of streamlines, returns a dictionary with keys:voxels
        and values: normalized directions of the streamlines in that voxel'''
@@ -64,11 +62,6 @@ def streamline_directions_per_voxel(streamlines, nzrs):
     dir_per_vox = {k:v for k, v in dir_per_vox.items() if k in nzrs}
 
     return dir_per_vox
-
-
-def is_invertible(a):
-    return a.shape[0] == a.shape[1] and np.linalg.matrix_rank(a) == a.shape[0]
-
 
 def diffusion_weights_tract(odfs, total_subjects, tract_dict,
                             label, nzrs, sphere):
@@ -106,9 +99,33 @@ def diffusion_weights_tract(odfs, total_subjects, tract_dict,
                             for v, d in dir_per_vox.items()}
 
         # Estimate an odf per voxel
-        odf_per_vox = {v: density(sphere.vertices, L)
-                       for v, L in lambda_per_voxel.items()
-                       if is_invertible(L)}
+        odf_per_vox = {}
+        n = len(sphere.vertices)
+        uniform_density = [np.sqrt(n)/n]*n
+        
+        for v, L in lambda_per_voxel.items():
+            try:
+                computed_density = density(sphere.vertices, L)
+    
+                if np.isnan(computed_density).any():
+                    raise ValueError('nan in density')
+
+                odf_per_vox[v] = computed_density
+
+            except:
+                try:
+                    Le, Lv = np.linalg.eigh(L)
+                    Le /= Le.max()
+                    L = np.dot(np.dot(Lv, np.diag(Le.clip(1e-4))), Lv.T)
+                    computed_density = density(sphere.vertices, L)
+
+                    if np.isnan(computed_density).any():
+                        raise ValueError('nan in density')
+
+                    odf_per_vox[v] = computed_density
+                except:
+
+                    odf_per_vox[v] = np.array(uniform_density)
 
         # Retrieve the odf of the test subject
         voxels = odf_per_vox.keys()
@@ -127,7 +144,6 @@ def diffusion_weights_tract(odfs, total_subjects, tract_dict,
         weights_per_voxel[subject, ids] = similarity
 
     return weights_per_voxel
-
 
 def multi_label_segmentation(atlases, train_tracts, test_dwi,
                              bvecs, bvals, dwi_affine, sphere='repulsion100',

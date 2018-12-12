@@ -10,6 +10,7 @@ def density(points, Lambda):
     q = Lambda.shape[0]
     a_inv =  special.gamma(q / 2.) / (2. * np.pi ** (q / 2.))
     det_inv = np.linalg.det(Lambda) ** -.5
+
     xpx = (np.linalg.solve(Lambda, points.T) * points.T).sum(0)
     return a_inv * det_inv * xpx ** -(q / 2.)
 
