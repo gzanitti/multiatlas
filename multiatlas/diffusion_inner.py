@@ -15,7 +15,8 @@ from dipy.data import get_sphere
 
 from logpar.utils import cifti_utils
 
-from .acg_distribution import lambda_estimator, density
+from .csd_distribution import estimate_fodf
+
 
 def compute_odfs(dmri_data, bvals, bvecs, mask, sphere):
     """Returns peaks of the diffusion data on nzr_positions"""
@@ -78,7 +79,7 @@ def diffusion_weights_tract(odfs, total_subjects, tract_dict,
 
     weights_per_voxel = np.zeros((total_subjects, len(nzrs)))
 
-    vox2idx = {v:i for i, v in enumerate(nzrs)}
+    vox2idx = {v: i for i, v in enumerate(nzrs)}
 
     for subject in range(total_subjects):
         #print("Diff for subject {}".format(subject))
@@ -94,38 +95,9 @@ def diffusion_weights_tract(odfs, total_subjects, tract_dict,
         if len(dir_per_vox) == 0:
             continue
 
-        # Estimate a lambda per voxel
-        lambda_per_voxel = {v: lambda_estimator(np.array(d), iters=100)
-                            for v, d in dir_per_vox.items()}
-
         # Estimate an odf per voxel
-        odf_per_vox = {}
-        n = len(sphere.vertices)
-        uniform_density = [np.sqrt(n)/n]*n
-        
-        for v, L in lambda_per_voxel.items():
-            try:
-                computed_density = density(sphere.vertices, L)
-    
-                if np.isnan(computed_density).any():
-                    raise ValueError('nan in density')
-
-                odf_per_vox[v] = computed_density
-
-            except:
-                try:
-                    Le, Lv = np.linalg.eigh(L)
-                    Le /= Le.max()
-                    L = np.dot(np.dot(Lv, np.diag(Le.clip(1e-4))), Lv.T)
-                    computed_density = density(sphere.vertices, L)
-
-                    if np.isnan(computed_density).any():
-                        raise ValueError('nan in density')
-
-                    odf_per_vox[v] = computed_density
-                except:
-
-                    odf_per_vox[v] = np.array(uniform_density)
+        odf_per_vox = {v: estimate_fodf(dirs, sphere.vertices)
+                       for v, dirs in dir_per_vox.items()}
 
         # Retrieve the odf of the test subject
         voxels = odf_per_vox.keys()
@@ -134,8 +106,7 @@ def diffusion_weights_tract(odfs, total_subjects, tract_dict,
         train_odfs = np.array(list(odf_per_vox.values()))
 
         norms = (train_odfs*train_odfs).sum(-1)
-        norms[norms==0] = 1
-        norms = np.sqrt(norms)
+        norms[norms == 0] = 1
         train_odfs = train_odfs / norms[:, None]
 
         similarity = (test_odfs*train_odfs).sum(1)
@@ -232,10 +203,10 @@ def multi_label_segmentation(atlases, train_tracts, test_dwi,
         print(time.time() - init)
 
     # Compute the weight for each grey-matter label assuming isotropic diff
-    # The value in a uniform is 1/#v, if we want <u,u> = 1, then we
-    # need to normalize by 1/sqrt(#v) -> (1/#v) / (1/sqrt(#v)) = sqrt(#v)/#v
+    # Given an uniform distribution U = [u]*n, if we want <U,U> = 1 then
+    # u = 1/sqrt(n)
     v = len(sphere.vertices)
-    uniform_density = np.sqrt(v)/v
+    uniform_density = 1/np.sqrt(v)
 
     test_odfs = test_odfs[mask]
 
